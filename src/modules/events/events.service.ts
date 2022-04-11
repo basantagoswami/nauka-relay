@@ -1,11 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { EventDto } from './dto/event.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class EventsService {
+  constructor(
+    @InjectRepository(Event)
+    private eventsRepo: Repository<Event>
+  ) {}
     
-  handleEvent(event: EventDto) {
-    console.log(event);
+  handleEvent(event: Event) {
+    this.eventsRepo.insert(event);
   }
 
   handleRequest(subscriptionId: string, filters: any[]) {

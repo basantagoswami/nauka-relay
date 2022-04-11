@@ -3,9 +3,14 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { EventsModule } from './modules/events/events.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { DatabaseModule } from './modules/database/database.module';
 
 @Module({
-  imports: [EventsModule, AuthModule],
+  imports: [
+    DatabaseModule,
+    EventsModule,
+    AuthModule
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
