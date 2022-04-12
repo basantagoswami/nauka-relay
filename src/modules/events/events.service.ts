@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { validateEvent } from 'src/utils/event-validator.util';
 import { Repository } from 'typeorm';
+import { Event } from './entities/events.entity'
 
 @Injectable()
 export class EventsService {
@@ -9,8 +11,11 @@ export class EventsService {
     private eventsRepo: Repository<Event>
   ) {}
     
-  handleEvent(event: Event) {
-    this.eventsRepo.insert(event);
+  async handleEvent(event: Event) {
+    if(await validateEvent(event)) {
+      this.eventsRepo.insert(event);
+    }
+    console.log();
   }
 
   handleRequest(subscriptionId: string, filters: any[]) {
