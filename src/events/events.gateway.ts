@@ -41,5 +41,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
     });
   }
-  handleDisconnect(client: any) {}
+  handleDisconnect(client: any) {
+    console.log('Client disconnected');
+  }
 }

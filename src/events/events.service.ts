@@ -1,18 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { validateEvent } from 'src/utils/event-validator.util';
+import { SharedService } from 'src/shared/shared.service';
 import { Repository } from 'typeorm';
-import { Event } from './entities/events.entity'
+import { Event } from './entities/events.entity';
 
 @Injectable()
 export class EventsService {
   constructor(
     @InjectRepository(Event)
-    private eventsRepo: Repository<Event>
+    private eventsRepo: Repository<Event>,
+    private sharedService: SharedService,
   ) {}
-    
+
   async handleEvent(event: Event) {
-    if(await validateEvent(event)) {
+    if (await this.sharedService.validateEvent(event)) {
       this.eventsRepo.insert(event);
     }
     console.log();
