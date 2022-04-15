@@ -1,25 +1,25 @@
-import { Column, Entity, ObjectIdColumn } from "typeorm";
+import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-@Entity({name: 'events'})
+@Entity({ name: 'events' })
 export class Event {
-    @ObjectIdColumn()
-    id: string;
+  @PrimaryColumn()
+  id: string;
 
-    @Column()
-    pubkey: string;
+  @Column()
+  pubkey: string;
 
-    @Column()
-    created_at: string;
+  @Column()
+  created_at: string;
 
-    @Column()
-    kind: number;
+  @Column()
+  kind: number;
 
-    @Column()
-    tags: [[], []];
+  @Column()
+  tags: string;
 
-    @Column()
-    content: string;
+  @Column()
+  content: string;
 
-    @Column()
-    sig: string;
+  @Column()
+  sig: string;
 }
