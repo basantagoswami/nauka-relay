@@ -1,83 +1,97 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { SharedService } from 'src/shared/shared.service';
-import { Between, In, LessThan, MoreThan, Repository } from 'typeorm';
+import { RequestFilterDto } from './dto/request-filter.dto';
 import { Event } from './entities/events.entity';
+import { EventsQueries } from './events.queries';
 
 @Injectable()
 export class EventsService {
-  constructor(
-    @InjectRepository(Event)
-    private eventsRepo: Repository<Event>,
-    private sharedService: SharedService,
-  ) {}
+  SUBSCRIPTIONS = [];
+
+  constructor(private eventsQueries: EventsQueries) {}
 
   /**
-   * Save events to database if event is valid
-   * @todo: check if events matches any subscription
+   * Handle Event
+   * Save event to db, return matched subscriptions
    */
-  async handleEvent(event: Event) {
-    if (await this.sharedService.validateEvent(event)) {
-      event.tags = JSON.stringify(event.tags);
-      this.eventsRepo.save(event);
+  async handleEvent(event: Event): Promise<string[]> {
+    event.tags = JSON.stringify(event.tags);
+    await this.eventsQueries.saveEvent(event);
+    return this.fetchMatchedSubs(event);
+  }
+
+  /**
+   * Handle Request
+   * Save subscription & return events matched with req filter
+   */
+  async handleRequest(
+    subscriptionId: string,
+    filters: RequestFilterDto[],
+  ): Promise<Event[]> {
+    // If no subs exist save sub
+    if (!this.SUBSCRIPTIONS.length) {
+      this.SUBSCRIPTIONS.push([subscriptionId, filters]);
     }
+    // If subs exist
+    else {
+      this.SUBSCRIPTIONS.forEach((sub) => {
+        // If sub with Id doesn't exist, add sub
+        // If sub with Id exists, replace sub filter(s) with new one(s)
+        if (!sub[0].includes(subscriptionId))
+          this.SUBSCRIPTIONS.push([subscriptionId, filters]);
+        //
+        else sub[1] = filters;
+      });
+    }
+
+    // Return events matched with filters
+    return this.eventsQueries.fetchEventsWithFilters(filters);
   }
 
   /**
-   * Return events based on the request filter
-   * @todo: push subscription to a subscription object
+   * Handle Close
+   * Delete sub from subs on CLOSE event
    */
-  async handleRequest(subscriptionId: string, filters: any[]) {
-    return this.eventsRepo.find({
-      where: this.createWhereClause(filters),
-    });
-  }
-
   handleClose(subscriptionId: string) {
-    console.log(subscriptionId);
+    for (let i = 0; i < this.SUBSCRIPTIONS.length; i++) {
+      if (this.SUBSCRIPTIONS[i][0] == subscriptionId)
+        this.SUBSCRIPTIONS.splice(i, 1);
+    }
   }
 
   /**
-   * Create the where clause that will fetch the appropriate events
-   * @todo: find a more elegant solution ffs
-   * @todo: also make the tags work, they are totally ignored for now
+   * Fetch Matched Subs
+   * Return subs with filters that would want this event
    */
-  createWhereClause(filters: any[]) {
-    const where = [];
+  fetchMatchedSubs(event: Event): string[] {
+    const matchedSubs = [];
 
-    // For each filter create a where clause, which works as OR
-    for (let i = 0; i < filters.length; i++) {
-      const wherePerFilter = {};
+    this.SUBSCRIPTIONS.forEach((sub) => {
+      const subscriptionId: string = sub[0];
+      const filters: RequestFilterDto[] = sub[1];
 
-      const { ids, kinds, e, p, since, until, authors } = filters[i];
+      filters.forEach((filter) => {
+        if (
+          filter.ids &&
+          filter.ids.includes(event.id) &&
+          filter.kinds &&
+          filter.kinds.includes(event.kind) &&
+          // filter.e &&
+          // filter.e includes(event.tags.e) &&
+          // filter.p &&
+          // filter.p includes(event.tags.p) &&
+          filter.since &&
+          filter.since > parseInt(event.created_at) &&
+          filter.until &&
+          filter.until < parseInt(event.created_at) &&
+          filter.authors &&
+          filter.authors.includes(event.pubkey)
+        ) {
+          matchedSubs.push(subscriptionId);
+          // break;
+        }
+      });
+    });
 
-      if (ids != undefined) {
-        Object.assign(wherePerFilter, { id: In(ids) });
-      }
-      if (kinds != undefined) {
-        Object.assign(wherePerFilter, { kind: In(kinds) });
-      }
-      // if (e != undefined) {
-      // Object.assign(wherePerFilter, { tags.e: In(e) });
-      // }
-      // if (p != undefined) {
-      // Object.assign(wherePerFilter, { tags.p In(p) })
-      // }
-      if (since != undefined) {
-        Object.assign(wherePerFilter, { created_at: MoreThan(since) });
-      }
-      if (until != undefined) {
-        Object.assign(wherePerFilter, { created_at: LessThan(since) });
-      }
-      if (since != undefined) {
-        Object.assign(wherePerFilter, { created_at: Between(since, until) });
-      }
-      if (authors != undefined) {
-        Object.assign(wherePerFilter, { pubkey: In(authors) });
-      }
-
-      where.push(wherePerFilter);
-    }
-    return where;
+    return matchedSubs;
   }
 }

@@ -48,7 +48,8 @@ export class SharedService {
   }
 
   // Format event message
-  formatEvent(subscriptionId: string, event) {
+  formatEvent(subscriptionId: string, event: Event) {
+    event.tags = JSON.parse(event.tags);
     return `["EVENT", "${subscriptionId}", ${JSON.stringify(event)}]`;
   }
 }
