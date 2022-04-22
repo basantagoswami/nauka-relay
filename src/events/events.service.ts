@@ -30,7 +30,7 @@ export class EventsService {
         console.log('Event deletion is yet to be implemented');
     }
 
-    return this.fetchMatchedSubs(event);
+    return this.fetchMatchedSubs(event) as any;
   }
 
   /**
@@ -98,19 +98,52 @@ export class EventsService {
    * Fetch Matched Subs
    * Return subs with filters that would want this event
    */
-  fetchMatchedSubs(event: Event): string[] {
+  fetchMatchedSubs(event: Event): Set<string> {
+    // real ugly... but it works
     const matchedSubs = [];
+    const { id, pubkey, created_at, kind, tags } = event;
 
-    this.SUBSCRIPTIONS.forEach((sub) => {
-      const subscriptionId: string = sub[0];
-      const filters: RequestFilterDto[] = sub[1];
+    this.SUBSCRIPTIONS.forEach((subscription) => {
+      subscription[1].forEach((filter) => {
+        const filterPropertyCount = Object.keys(filter).length;
+        let matches = 0;
 
-      filters.forEach((filter) => {
-        const { ids, kinds, e, p, since, until, authors } = filter;
-        // todo: implement fetching matched subs
+        Object.entries(filter).forEach((entry) => {
+          const key = entry[0];
+          const value = entry[1] as any;
+
+          switch (key) {
+            case 'ids':
+              if (value.includes(id)) matches++;
+              break;
+            case 'kinds':
+              if (value.includes(kind)) matches++;
+              break;
+            case 'e':
+              tags.forEach((tag) => {
+                if (tag.name == 'e') if (value.includes(tag.tag)) matches++;
+              });
+              break;
+            case 'p':
+              tags.forEach((tag) => {
+                if (tag.name == 'p') if (value.includes(tag.tag)) matches++;
+              });
+              break;
+            case 'since':
+              if (value <= created_at) matches++;
+              break;
+            case 'until':
+              if (value >= created_at) matches++;
+              break;
+            case 'authors':
+              if (value.includes(pubkey)) matches++;
+              break;
+          }
+        });
+        if (matches == filterPropertyCount) matchedSubs.push(subscription[0]);
       });
     });
 
-    return matchedSubs;
+    return new Set(matchedSubs);
   }
 }

@@ -71,7 +71,10 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
               'Need to send events to the following subs: ',
               matchedSubs,
             );
-          }
+          } else
+            client.send(
+              this.sharedService.formatNotice(`${ErrorMessage.INVALID_EVENT}`),
+            );
           break;
         // REQ
         case MessageType.REQ:
