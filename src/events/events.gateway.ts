@@ -67,8 +67,9 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
           const event = message[1];
           if (await this.sharedService.validateEvent(event)) {
             const matchedSubs = await this.eventsService.handleEvent(event);
-            matchedSubs.forEach((sub) =>
-              client.send(this.sharedService.formatEvent(sub, event)),
+            console.log(
+              'Need to send events to the following subs: ',
+              matchedSubs,
             );
           }
           break;

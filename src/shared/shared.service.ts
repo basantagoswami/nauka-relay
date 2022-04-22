@@ -35,7 +35,7 @@ export class SharedService {
   }
 
   // Validate event
-  async validateEvent(event: Event) {
+  async validateEvent(event) {
     if ((await this.getEventHash(event)) == event.id) {
       if ((await this.verifySignature(event)) == true) return true;
     }
@@ -49,7 +49,6 @@ export class SharedService {
 
   // Format event message
   formatEvent(subscriptionId: string, event: Event) {
-    event.tags = JSON.parse(event.tags);
     return `["EVENT", "${subscriptionId}", ${JSON.stringify(event)}]`;
   }
 }

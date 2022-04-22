@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { Column, Entity, JoinTable, ManyToMany, PrimaryColumn } from 'typeorm';
+import { Tag } from './tags.entity';
 
 @Entity({ name: 'events' })
 export class Event {
@@ -9,13 +10,14 @@ export class Event {
   pubkey: string;
 
   @Column()
-  created_at: string;
+  created_at: number;
 
   @Column()
   kind: number;
 
-  @Column()
-  tags: string;
+  @ManyToMany(() => Tag, (tag) => tag.event, { cascade: true, eager: true })
+  @JoinTable()
+  tags: Tag[];
 
   @Column()
   content: string;

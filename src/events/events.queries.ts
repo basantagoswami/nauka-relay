@@ -15,8 +15,12 @@ export class EventsQueries {
    * Save event
    * Save event to db
    */
-  async saveEvent(event) {
-    this.eventsRepo.save(event);
+  async saveEvent(event: Event) {
+    event.tags.forEach((tag) => {
+      tag.name = tag[0];
+      tag.tag = tag[1];
+    });
+    await this.eventsRepo.save(event);
   }
 
   /**
@@ -44,6 +48,6 @@ export class EventsQueries {
       );
     });
 
-    return qb.getMany();
+    return qb.leftJoinAndSelect('e.tags', 'tags').getMany();
   }
 }

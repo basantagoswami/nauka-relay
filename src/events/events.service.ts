@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RequestFilterDto } from './dto/request-filter.dto';
 import { Event } from './entities/events.entity';
+import { EventKind } from './enums/event-kind';
 import { EventsQueries } from './events.queries';
 
 @Injectable()
@@ -14,8 +15,21 @@ export class EventsService {
    * Save event to db, return matched subscriptions
    */
   async handleEvent(event: Event): Promise<string[]> {
-    event.tags = JSON.stringify(event.tags);
-    await this.eventsQueries.saveEvent(event);
+    switch (event.kind) {
+      case EventKind.set_metadata:
+      case EventKind.text_note:
+      case EventKind.recommend_server:
+      case EventKind.encrypted_direct_message:
+        event.tags.forEach((tag) => {
+          tag.name = tag[0];
+          tag.tag = tag[1];
+        });
+        await this.eventsQueries.saveEvent(event);
+        break;
+      case EventKind.deletion:
+        console.log('Event deletion is yet to be implemented');
+    }
+
     return this.fetchMatchedSubs(event);
   }
 
@@ -27,24 +41,46 @@ export class EventsService {
     subscriptionId: string,
     filters: RequestFilterDto[],
   ): Promise<Event[]> {
-    // If no subs exist save sub
+    // If sub array is empty, push the first sub
     if (!this.SUBSCRIPTIONS.length) {
       this.SUBSCRIPTIONS.push([subscriptionId, filters]);
     }
-    // If subs exist
+    // If subs array isn't empty:
+    // replace filters if sub already exists, else push new sub
     else {
+      let subExists = false;
       this.SUBSCRIPTIONS.forEach((sub) => {
-        // If sub with Id doesn't exist, add sub
-        // If sub with Id exists, replace sub filter(s) with new one(s)
-        if (!sub[0].includes(subscriptionId))
-          this.SUBSCRIPTIONS.push([subscriptionId, filters]);
-        //
-        else sub[1] = filters;
+        if (sub[0] == subscriptionId) {
+          subExists = true;
+          sub[1] = filters;
+        }
       });
+      if (!subExists) this.SUBSCRIPTIONS.push([subscriptionId, filters]);
     }
 
     // Return events matched with filters
-    return this.eventsQueries.fetchEventsWithFilters(filters);
+    const matchedEvents = await this.eventsQueries.fetchEventsWithFilters(
+      filters,
+    );
+    const eventsToSend = [];
+
+    matchedEvents.forEach((event) => {
+      const tags = event.tags.map((tag) =>
+        JSON.parse(`["${tag.name}", "${tag.tag}"]`),
+      );
+
+      // Format events before sending
+      eventsToSend.push({
+        id: event.id,
+        pubkey: event.pubkey,
+        created_at: event.created_at,
+        kind: event.kind,
+        tags: tags,
+        content: event.content,
+        sig: event.sig,
+      });
+    });
+    return eventsToSend;
   }
 
   /**
@@ -70,25 +106,8 @@ export class EventsService {
       const filters: RequestFilterDto[] = sub[1];
 
       filters.forEach((filter) => {
-        if (
-          filter.ids &&
-          filter.ids.includes(event.id) &&
-          filter.kinds &&
-          filter.kinds.includes(event.kind) &&
-          // filter.e &&
-          // filter.e includes(event.tags.e) &&
-          // filter.p &&
-          // filter.p includes(event.tags.p) &&
-          filter.since &&
-          filter.since > parseInt(event.created_at) &&
-          filter.until &&
-          filter.until < parseInt(event.created_at) &&
-          filter.authors &&
-          filter.authors.includes(event.pubkey)
-        ) {
-          matchedSubs.push(subscriptionId);
-          // break;
-        }
+        const { ids, kinds, e, p, since, until, authors } = filter;
+        // todo: implement fetching matched subs
       });
     });
 
