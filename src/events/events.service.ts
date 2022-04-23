@@ -12,9 +12,9 @@ export class EventsService {
 
   /**
    * Handle Event
-   * Save event to db, return matched subscriptions
+   * Save event to database or delete event
    */
-  async handleEvent(event: Event): Promise<string[]> {
+  async handleEvent(event: Event) {
     switch (event.kind) {
       case EventKind.set_metadata:
       case EventKind.text_note:
@@ -29,8 +29,6 @@ export class EventsService {
       case EventKind.deletion:
         console.log('Event deletion is yet to be implemented');
     }
-
-    return this.fetchMatchedSubs(event) as any;
   }
 
   /**
@@ -59,28 +57,17 @@ export class EventsService {
     }
 
     // Return events matched with filters
-    const matchedEvents = await this.eventsQueries.fetchEventsWithFilters(
+    const matchedEvents = (await this.eventsQueries.fetchEventsWithFilters(
       filters,
-    );
-    const eventsToSend = [];
+    )) as any;
 
     matchedEvents.forEach((event) => {
       const tags = event.tags.map((tag) =>
         JSON.parse(`["${tag.name}", "${tag.tag}"]`),
       );
-
-      // Format events before sending
-      eventsToSend.push({
-        id: event.id,
-        pubkey: event.pubkey,
-        created_at: event.created_at,
-        kind: event.kind,
-        tags: tags,
-        content: event.content,
-        sig: event.sig,
-      });
+      event.tags = tags;
     });
-    return eventsToSend;
+    return matchedEvents;
   }
 
   /**
@@ -119,12 +106,12 @@ export class EventsService {
             case 'kinds':
               if (value.includes(kind)) matches++;
               break;
-            case 'e':
+            case '#e':
               tags.forEach((tag) => {
                 if (tag.name == 'e') if (value.includes(tag.tag)) matches++;
               });
               break;
-            case 'p':
+            case '#p':
               tags.forEach((tag) => {
                 if (tag.name == 'p') if (value.includes(tag.tag)) matches++;
               });
@@ -140,7 +127,7 @@ export class EventsService {
               break;
           }
         });
-        if (matches == filterPropertyCount) matchedSubs.push(subscription[0]);
+        if (matches >= filterPropertyCount) matchedSubs.push(subscription[0]);
       });
     });
 

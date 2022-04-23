@@ -18,12 +18,12 @@ export class SharedService {
   }
 
   // Verify signature
-  async verifySignature(event: Event) {
+  async verifySignature(event) {
     return await secp256k1.schnorr.verify(event.sig, event.id, event.pubkey);
   }
 
   // Serialize event
-  serializeEvent(event: Event) {
+  serializeEvent(event) {
     return JSON.stringify([
       0,
       event.pubkey,

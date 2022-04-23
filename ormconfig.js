@@ -6,7 +6,11 @@ const dbConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   entities: ['dist/**/entities/*.entity.js'],
-  synchronize: true,
+  synchronize: false,
+  migrations: ['dist/db/*.js'],
+  cli: {
+    migrationsDir: 'src/db',
+  },
 };
 
 module.exports = dbConfig;
