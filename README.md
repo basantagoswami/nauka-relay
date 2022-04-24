@@ -19,14 +19,19 @@ $ npm install
 
 ## .env
 
-Create an .env file in the root of this project directory and include the following variables:
+Create an .env file in the root of this project directory and include the postgres connection params. Examples:
 
 ```
-DB_HOST=hostURL
+DB_HOST=localhost
 DB_PORT=5432
 DB_USERNAME=username
 DB_PASSWORD=password
 DB_NAME=nauka
+```
+## Setup db
+
+```
+npx typeorm migration:run
 ```
 
 ## Running the app
