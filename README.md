@@ -1,13 +1,32 @@
 # Nauka
 
-Nauka is an attempt at creating a social network using the [nostr](https://github.com/fiatjaf/nostr) protocol. But I am a noob so don't hold your breath.
+Nauka is an attempt at creating a social network using the [nostr](https://github.com/fiatjaf/nostr) protocol. For now it is just a **nostr relay** that runs on nodejs, but is going to be a client, relay monorepo in the future.
 
-For now it is just a websocket (and http) server that listens for nostr defined messages (EVENT, REQ, and CLOSE).
 
 ## Installation
 
+### You'll need:
+
+- NodeJs    (v16.14.2)
+- PostgreSQL (14.2)
+
+Running it with olders versions of node (and npm) and postgres might cause some issues.
+
+### Install the dependencies
 ```bash
 $ npm install
+```
+
+## .env
+
+Create an .env file in the root of this project directory and include the following variables:
+
+```
+DB_HOST=hostURL
+DB_PORT=5432
+DB_USERNAME=username
+DB_PASSWORD=password
+DB_NAME=nauka
 ```
 
 ## Running the app
@@ -16,8 +35,11 @@ $ npm install
 # development
 $ npm run start
 
-# watch mode
+# dev with watch mode
 $ npm run start:dev
+
+# debug
+$ npm run start:debug
 
 # production mode
 $ npm run start:prod
