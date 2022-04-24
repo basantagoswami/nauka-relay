@@ -9,6 +9,7 @@ import { ErrorMessage } from 'src/utils/error-message.util';
 import { MessageType } from './enums/message-type.enum';
 import { SharedService } from '../shared/shared.service';
 import { WebSocket, Server } from 'ws';
+import { v4 as uuid } from 'uuid';
 
 @WebSocketGateway()
 export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -26,8 +27,12 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
    */
 
   handleConnection(client: WebSocket, ...args: any[]) {
-    client.on('message', (data) => {
-      this.handleMessage(client, data);
+    client.on('message', async (data) => {
+      await this.handleMessage(client, data).catch((error) =>
+        client.send(
+          this.sharedService.formatNotice(`An error occured: ${error.message}`),
+        ),
+      );
     });
   }
 
@@ -77,14 +82,20 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
             const matchedSubs = this.eventsService.fetchMatchedSubs(event);
             // Send event to clients with those subscription ids
             this.server.clients.forEach((client) => {
-              if (client['subscriptionId'])
-                if (matchedSubs.has(client['subscriptionId']))
-                  client.send(
-                    this.sharedService.formatEvent(
-                      client['subscriptionId'],
-                      event,
-                    ),
-                  );
+              if (client['subscriptionId'] && client['clientId']) {
+                matchedSubs.forEach((sub) => {
+                  if (
+                    sub[0] == client['subscriptionId'] &&
+                    sub[1] == client['clientId']
+                  )
+                    client.send(
+                      this.sharedService.formatEvent(
+                        client['subscriptionId'],
+                        event,
+                      ),
+                    );
+                });
+              }
             });
           } else
             client.send(
@@ -97,12 +108,16 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         case MessageType.REQ:
           const [, subscriptionId] = message.splice(0, 2);
 
-          // Save the subscriptionId in the client object
-          Object.assign(client, { subscriptionId: subscriptionId });
+          // Save the subscriptionId and an unique identifier in the client object
+          Object.assign(client, {
+            subscriptionId: subscriptionId,
+            clientId: uuid(),
+          });
 
           // Return requested events
           const events = await this.eventsService.handleRequest(
             subscriptionId,
+            client.clientId,
             message,
           );
           events.forEach((event) => {
@@ -113,7 +128,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
          * CLOSE
          */
         case MessageType.CLOSE:
-          this.eventsService.handleClose(message[1]);
+          this.eventsService.handleClose(message[1], client.clientId);
       }
     }
   }

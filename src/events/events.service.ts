@@ -37,23 +37,26 @@ export class EventsService {
    */
   async handleRequest(
     subscriptionId: string,
+    clientId: string,
     filters: RequestFilterDto[],
   ): Promise<Event[]> {
     // If sub array is empty, push the first sub
     if (!this.SUBSCRIPTIONS.length) {
-      this.SUBSCRIPTIONS.push([subscriptionId, filters]);
+      this.SUBSCRIPTIONS.push([subscriptionId, clientId, filters]);
     }
     // If subs array isn't empty:
     // replace filters if sub already exists, else push new sub
     else {
       let subExists = false;
       this.SUBSCRIPTIONS.forEach((sub) => {
-        if (sub[0] == subscriptionId) {
+        if (sub[0] == subscriptionId && sub[1] == clientId) {
           subExists = true;
+          sub[1] = clientId;
           sub[1] = filters;
         }
       });
-      if (!subExists) this.SUBSCRIPTIONS.push([subscriptionId, filters]);
+      if (!subExists)
+        this.SUBSCRIPTIONS.push([subscriptionId, clientId, filters]);
     }
 
     // Return events matched with filters
@@ -74,9 +77,12 @@ export class EventsService {
    * Handle Close
    * Delete sub from subs on CLOSE event
    */
-  handleClose(subscriptionId: string) {
+  handleClose(subscriptionId: string, clientId: string) {
     for (let i = 0; i < this.SUBSCRIPTIONS.length; i++) {
-      if (this.SUBSCRIPTIONS[i][0] == subscriptionId)
+      if (
+        this.SUBSCRIPTIONS[i][0] == subscriptionId &&
+        this.SUBSCRIPTIONS[i][1] == clientId
+      )
         this.SUBSCRIPTIONS.splice(i, 1);
     }
   }
@@ -91,7 +97,7 @@ export class EventsService {
     const { id, pubkey, created_at, kind, tags } = event;
 
     this.SUBSCRIPTIONS.forEach((subscription) => {
-      subscription[1].forEach((filter) => {
+      subscription[2].forEach((filter) => {
         const filterPropertyCount = Object.keys(filter).length;
         let matches = 0;
 
@@ -127,7 +133,8 @@ export class EventsService {
               break;
           }
         });
-        if (matches >= filterPropertyCount) matchedSubs.push(subscription[0]);
+        if (matches >= filterPropertyCount)
+          matchedSubs.push([subscription[0], subscription[1]]);
       });
     });
 
