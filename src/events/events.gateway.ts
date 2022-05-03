@@ -8,7 +8,7 @@ import { EventsService } from './events.service';
 import { ErrorMessage } from 'src/utils/error-message.util';
 import { MessageType } from './enums/message-type.enum';
 import { SharedService } from '../shared/shared.service';
-import { WebSocket, Server } from 'ws';
+import { WebSocket, Server, RawData } from 'ws';
 import { v4 as uuid } from 'uuid';
 
 @WebSocketGateway()
@@ -27,6 +27,10 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
    */
 
   handleConnection(client: WebSocket, ...args: any[]) {
+    // Save an unique id in the client object
+    Object.assign(client, { id: uuid() });
+
+    // Handle all kinds of messages, or send back all kinds of error messages
     client.on('message', async (data) => {
       await this.handleMessage(client, data).catch((error) =>
         client.send(
@@ -40,15 +44,15 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
    * Handle Disconnect
    * Gets called every time a connected client disconnects
    */
-  handleDisconnect(client: any) {
-    console.log('Client disconnected');
+  handleDisconnect(client: WebSocket) {
+    console.log(`Client ${client['id']} disconnected`);
   }
 
   /**
    * Handle Message
    * Gets called every time a message is recieved from a client
    */
-  async handleMessage(client: WebSocket, data: any) {
+  async handleMessage(client: WebSocket, data: RawData) {
     let message: any;
 
     // Try to parse JSON, send error message if message isn't JSON
@@ -57,7 +61,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } catch (error) {
       client.send(
         this.sharedService.formatNotice(
-          `${ErrorMessage.INVALID_JSON} ${error.message}`,
+          `${ErrorMessage.INVALID_DATA} ${error.message}`,
         ),
       );
     }
@@ -82,11 +86,11 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
             const matchedSubs = this.eventsService.fetchMatchedSubs(event);
             // Send event to clients with those subscription ids
             this.server.clients.forEach((client) => {
-              if (client['subscriptionId'] && client['clientId']) {
+              if (client['subscriptionId'] && client['id']) {
                 matchedSubs.forEach((sub) => {
                   if (
                     sub[0] == client['subscriptionId'] &&
-                    sub[1] == client['clientId']
+                    sub[1] == client['id']
                   )
                     client.send(
                       this.sharedService.formatEvent(
@@ -108,17 +112,14 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
         case MessageType.REQ:
           const [, subscriptionId] = message.splice(0, 2);
 
-          // Save the subscriptionId and an unique identifier in the client object
-          Object.assign(client, {
-            subscriptionId: subscriptionId,
-            clientId: uuid(),
-          });
+          // Save the subscriptionId in the client object
+          Object.assign(client, { subscriptionId: subscriptionId });
 
           // Return requested events
           const events = await this.eventsService.handleRequest(
             subscriptionId,
-            client.clientId,
-            message,
+            client['id'],
+            message, // All the filters
           );
           events.forEach((event) => {
             client.send(this.sharedService.formatEvent(subscriptionId, event));
@@ -128,7 +129,17 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
          * CLOSE
          */
         case MessageType.CLOSE:
-          this.eventsService.handleClose(message[1], client.clientId);
+          this.eventsService.handleClose(message[1], client['id']);
+          break;
+
+        /**
+         * All other kinds of messages
+         * Even if they are JSON, will be rejected
+         */
+        default:
+          client.send(
+            this.sharedService.formatNotice(`${ErrorMessage.INVALID_MESSAGE}`),
+          );
       }
     }
   }

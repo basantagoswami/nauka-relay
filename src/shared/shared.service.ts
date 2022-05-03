@@ -1,29 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { Event } from 'src/events/entities/events.entity';
-import * as secp256k1 from '@noble/secp256k1';
+import { schnorr, utils } from '@noble/secp256k1';
+import { EventDto } from 'src/events/dto/event.dto';
 
 @Injectable()
 export class SharedService {
   // SHA256
-  sha256(message) {
-    return secp256k1.utils.sha256(Uint8Array.from(message));
-  }
-
-  // Get event hash
-  async getEventHash(event) {
-    const eventHash = await this.sha256(
-      Buffer.from(this.serializeEvent(event)),
-    );
-    return Buffer.from(eventHash).toString('hex');
-  }
-
-  // Verify signature
-  async verifySignature(event) {
-    return await secp256k1.schnorr.verify(event.sig, event.id, event.pubkey);
+  async sha256(message: string): Promise<string> {
+    return Buffer.from(
+      await utils.sha256(Uint8Array.from(Buffer.from(message))),
+    ).toString('hex');
   }
 
   // Serialize event
-  serializeEvent(event) {
+  serializeEvent(event: EventDto): string {
     return JSON.stringify([
       0,
       event.pubkey,
@@ -34,8 +24,18 @@ export class SharedService {
     ]);
   }
 
+  // Verify signature
+  async verifySignature(event: EventDto): Promise<boolean> {
+    return schnorr.verify(event.sig, event.id, event.pubkey);
+  }
+
+  // Get event hash
+  async getEventHash(event: EventDto): Promise<string> {
+    return this.sha256(this.serializeEvent(event));
+  }
+
   // Validate event
-  async validateEvent(event) {
+  async validateEvent(event: EventDto): Promise<boolean> {
     if ((await this.getEventHash(event)) == event.id) {
       if ((await this.verifySignature(event)) == true) return true;
     }
@@ -43,7 +43,7 @@ export class SharedService {
   }
 
   // Format notice
-  formatNotice(message: string) {
+  formatNotice(message: string): string {
     return JSON.stringify(['NOTICE', message]);
   }
 
