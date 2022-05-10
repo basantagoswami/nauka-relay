@@ -28,6 +28,9 @@ export class EventsQueries {
    * Query db for events matched by request filter
    */
   async fetchEventsWithFilters(filters: RequestFilterDto[]): Promise<Event[]> {
+    // Maximum # of events to be send per request (if limit isn't present in filter)
+    const defaultLimit = 500;
+
     const qb = this.eventsRepo
       .createQueryBuilder('e')
       .leftJoinAndSelect('e.tags', 't');
@@ -52,6 +55,8 @@ export class EventsQueries {
       );
     });
 
+    // Only take limit from the first filter, ignore the others
+    qb.limit(filters[0]['limit'] || defaultLimit);
     return qb.leftJoinAndSelect('e.tags', 'tags').getMany();
   }
 }
