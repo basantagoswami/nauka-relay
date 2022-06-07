@@ -19,6 +19,7 @@ export class EventsQueries {
     event.tags.forEach((tag) => {
       tag.name = tag[0];
       tag.tag = tag[1];
+      tag.recommended_relay_url = tag[2];
     });
     await this.eventsRepo.save(event);
   }

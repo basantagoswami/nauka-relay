@@ -12,6 +12,9 @@ export class Tag {
   @Column()
   tag: string;
 
+  @Column({ nullable: true })
+  recommended_relay_url: string;
+
   @ManyToMany(() => Event, (event) => event.tags)
   event: Event[];
 }

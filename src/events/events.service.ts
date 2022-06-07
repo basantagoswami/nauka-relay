@@ -23,11 +23,14 @@ export class EventsService {
         event.tags.forEach((tag) => {
           tag.name = tag[0];
           tag.tag = tag[1];
+          tag.recommended_relay_url = tag[2];
         });
         await this.eventsQueries.saveEvent(event);
         break;
       case EventKind.deletion:
         console.log('Event deletion is yet to be implemented');
+      default:
+        console.log('Other event kinds are skipped for now');
     }
   }
 

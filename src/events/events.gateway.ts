@@ -79,7 +79,14 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
          */
         case MessageType.EVENT:
           const event = message[1];
-          if (await this.sharedService.validateEvent(event)) {
+          // Send error if event is invalid
+          if (!(await this.sharedService.validateEvent(event))) {
+            client.send(
+              this.sharedService.formatNotice(`${ErrorMessage.INVALID_EVENT}`),
+            );
+          }
+          //
+          else {
             await this.eventsService.handleEvent(event);
 
             // Fetch matched subscription ids
@@ -91,20 +98,18 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
                   if (
                     sub[0] == client['subscriptionId'] &&
                     sub[1] == client['id']
-                  )
+                  ) {
                     client.send(
                       this.sharedService.formatEvent(
                         client['subscriptionId'],
                         event,
                       ),
                     );
+                  }
                 });
               }
             });
-          } else
-            client.send(
-              this.sharedService.formatNotice(`${ErrorMessage.INVALID_EVENT}`),
-            );
+          }
           break;
         /**
          * REQ
@@ -138,7 +143,9 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
          */
         default:
           client.send(
-            this.sharedService.formatNotice(`${ErrorMessage.INVALID_MESSAGE}`),
+            this.sharedService.formatNotice(
+              `${ErrorMessage.INVALID_MESSAGE_TYPE}`,
+            ),
           );
       }
     }
