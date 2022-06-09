@@ -1,4 +1,12 @@
-import { Column, Entity, JoinTable, ManyToMany, PrimaryColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinTable,
+  ManyToMany,
+  ManyToOne,
+  PrimaryColumn,
+} from 'typeorm';
+import { Pubkey } from './pubkeys.entity';
 import { Tag } from './tags.entity';
 
 @Entity({ name: 'events' })
@@ -6,8 +14,8 @@ export class Event {
   @PrimaryColumn()
   id: string;
 
-  @Column()
-  pubkey: string;
+  @ManyToOne(() => Pubkey, (pubkey) => pubkey.events)
+  pubkey: Pubkey;
 
   @Column()
   created_at: number;

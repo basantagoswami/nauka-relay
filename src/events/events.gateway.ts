@@ -10,6 +10,7 @@ import { MessageType } from './enums/message-type.enum';
 import { SharedService } from '../shared/shared.service';
 import { WebSocket, Server, RawData } from 'ws';
 import { v4 as uuid } from 'uuid';
+import { EventDto } from './dto/event.dto';
 
 @WebSocketGateway()
 export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -32,11 +33,11 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // Handle all kinds of messages, or send back all kinds of error messages
     client.on('message', async (data) => {
-      await this.handleMessage(client, data).catch((error) =>
+      await this.handleMessage(client, data).catch((error) => {
         client.send(
           this.sharedService.formatNotice(`An error occured: ${error.message}`),
-        ),
-      );
+        );
+      });
     });
   }
 
@@ -68,7 +69,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // If message is JSON, and got successfully parsed
     if (message != undefined) {
-      const messageType = message[0];
+      const messageType: MessageType = message[0];
 
       switch (messageType) {
         /**
@@ -78,7 +79,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
          * that would want that event
          */
         case MessageType.EVENT:
-          const event = message[1];
+          const event: EventDto = message[1];
           // Send error if event is invalid
           if (!(await this.sharedService.validateEvent(event))) {
             client.send(

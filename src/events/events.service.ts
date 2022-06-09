@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { Subscription } from 'src/utils/subscription';
+import { EventDto } from './dto/event.dto';
 import { RequestFilterDto } from './dto/request-filter.dto';
-import { Event } from './entities/events.entity';
 import { EventKind } from './enums/event-kind';
 import { EventsQueries } from './events.queries';
 
 @Injectable()
 export class EventsService {
-  SUBSCRIPTIONS = [];
+  subscriptions: Subscription[] = [];
 
   constructor(private eventsQueries: EventsQueries) {}
 
@@ -14,17 +15,14 @@ export class EventsService {
    * Handle Event
    * Save event to database or delete event
    */
-  async handleEvent(event: Event) {
+  async handleEvent(event: EventDto) {
     switch (event.kind) {
       case EventKind.set_metadata:
+        await this.eventsQueries.saveMetadata(event);
+        break;
       case EventKind.text_note:
       case EventKind.recommend_server:
       case EventKind.encrypted_direct_message:
-        event.tags.forEach((tag) => {
-          tag.name = tag[0];
-          tag.tag = tag[1];
-          tag.recommended_relay_url = tag[2];
-        });
         await this.eventsQueries.saveEvent(event);
         break;
       case EventKind.deletion:
@@ -42,38 +40,45 @@ export class EventsService {
     subscriptionId: string,
     clientId: string,
     filters: RequestFilterDto[],
-  ): Promise<Event[]> {
+  ): Promise<EventDto[]> {
     // If sub array is empty, push the first sub
-    if (!this.SUBSCRIPTIONS.length) {
-      this.SUBSCRIPTIONS.push([subscriptionId, clientId, filters]);
+    if (!this.subscriptions.length) {
+      this.subscriptions.push({ id: subscriptionId, clientId, filters });
     }
     // If subs array isn't empty:
     // replace filters if sub already exists, else push new sub
     else {
       let subExists = false;
-      this.SUBSCRIPTIONS.forEach((sub) => {
-        if (sub[0] == subscriptionId && sub[1] == clientId) {
+      this.subscriptions.forEach((sub) => {
+        if (sub.id == subscriptionId && sub.clientId == clientId) {
           subExists = true;
-          sub[1] = clientId;
-          sub[1] = filters;
+          sub.clientId = clientId;
+          sub.filters = filters;
         }
       });
       if (!subExists)
-        this.SUBSCRIPTIONS.push([subscriptionId, clientId, filters]);
+        this.subscriptions.push({ id: subscriptionId, clientId, filters });
     }
 
     // Return events matched with filters
-    const matchedEvents = (await this.eventsQueries.fetchEventsWithFilters(
+    const matchedEvents = await this.eventsQueries.fetchEventsWithFilters(
       filters,
-    )) as any;
+    );
 
-    matchedEvents.forEach((event) => {
+    return matchedEvents.map((event) => {
       const tags = event.tags.map((tag) =>
-        JSON.parse(`["${tag.name}", "${tag.tag}"]`),
+        JSON.parse(`["${tag.type}", "${tag.value}"]`),
       );
-      event.tags = tags;
+      return {
+        id: event.id,
+        pubkey: event.pubkey.value,
+        created_at: event.created_at,
+        kind: event.kind,
+        tags,
+        content: event.content,
+        sig: event.sig,
+      };
     });
-    return matchedEvents;
   }
 
   /**
@@ -81,12 +86,12 @@ export class EventsService {
    * Delete sub from subs on CLOSE event
    */
   handleClose(subscriptionId: string, clientId: string) {
-    for (let i = 0; i < this.SUBSCRIPTIONS.length; i++) {
+    for (let i = 0; i < this.subscriptions.length; i++) {
       if (
-        this.SUBSCRIPTIONS[i][0] == subscriptionId &&
-        this.SUBSCRIPTIONS[i][1] == clientId
+        this.subscriptions[i].id == subscriptionId &&
+        this.subscriptions[i].clientId == clientId
       )
-        this.SUBSCRIPTIONS.splice(i, 1);
+        this.subscriptions.splice(i, 1);
     }
   }
 
@@ -94,13 +99,13 @@ export class EventsService {
    * Fetch Matched Subs
    * Return subs with filters that would want this event
    */
-  fetchMatchedSubs(event: Event): Set<string> {
+  fetchMatchedSubs(event: EventDto): Set<string> {
     // real ugly... but it works
     const matchedSubs = [];
     const { id, pubkey, created_at, kind, tags } = event;
 
-    this.SUBSCRIPTIONS.forEach((subscription) => {
-      subscription[2].forEach((filter) => {
+    this.subscriptions.forEach((subscription) => {
+      subscription.filters.forEach((filter) => {
         const filterPropertyCount = Object.keys(filter).length;
         let matches = 0;
 
@@ -117,12 +122,12 @@ export class EventsService {
               break;
             case '#e':
               tags.forEach((tag) => {
-                if (tag.name == 'e') if (value.includes(tag.tag)) matches++;
+                if (tag[0] == 'e') if (value.includes(tag[1])) matches++;
               });
               break;
             case '#p':
               tags.forEach((tag) => {
-                if (tag.name == 'p') if (value.includes(tag.tag)) matches++;
+                if (tag[0] == 'p') if (value.includes(tag[1])) matches++;
               });
               break;
             case 'since':

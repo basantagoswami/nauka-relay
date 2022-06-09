@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { Event } from 'src/events/entities/events.entity';
 import { schnorr, utils } from '@noble/secp256k1';
 import { EventDto } from 'src/events/dto/event.dto';
 
@@ -48,7 +47,7 @@ export class SharedService {
   }
 
   // Format event message
-  formatEvent(subscriptionId: string, event: Event) {
+  formatEvent(subscriptionId: string, event: EventDto) {
     return `["EVENT", "${subscriptionId}", ${JSON.stringify(event)}]`;
   }
 }

@@ -1,27 +1,80 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets, In, Repository } from 'typeorm';
+import { EventDto } from './dto/event.dto';
 import { RequestFilterDto } from './dto/request-filter.dto';
 import { Event } from './entities/events.entity';
+import { Pubkey } from './entities/pubkeys.entity';
+import { Tag } from './entities/tags.entity';
 
 @Injectable()
 export class EventsQueries {
   constructor(
     @InjectRepository(Event)
     private eventsRepo: Repository<Event>,
+    @InjectRepository(Pubkey)
+    private pubkeysRepo: Repository<Pubkey>,
+    @InjectRepository(Tag)
+    private tagsRepo: Repository<Tag>,
   ) {}
 
   /**
    * Save event
    * Save event to db
    */
-  async saveEvent(event: Event) {
-    event.tags.forEach((tag) => {
-      tag.name = tag[0];
-      tag.tag = tag[1];
-      tag.recommended_relay_url = tag[2];
+  async saveEvent(data: EventDto) {
+    const { id, pubkey, created_at, kind, tags, content, sig } = data;
+
+    // Upsert pubkey
+    const existingPubkey = await this.pubkeysRepo.findOne({
+      where: { value: pubkey },
     });
-    await this.eventsRepo.save(event);
+    const savedPubkey = await this.pubkeysRepo.save(
+      existingPubkey || { value: pubkey },
+    );
+
+    // Upsert tags
+    const savedTags = await Promise.all(
+      tags.map(async (tag) => {
+        console.log(tag);
+        const existingTag = await this.tagsRepo.findOne({
+          where: { type: tag[0], value: tag[1] },
+        });
+        console.log({ existingTag });
+        const t = existingTag
+          ? existingTag
+          : await this.tagsRepo.save({
+              type: tag[0],
+              value: tag[1],
+              recommended_relay_url: tag[2] ? tag[2] : null,
+            });
+        return t;
+      }),
+    );
+
+    // Upsert event data, (save upserts because event's primary key is "id")
+    await this.eventsRepo.save(
+      this.eventsRepo.create({
+        pubkey: savedPubkey,
+        tags: savedTags,
+        id,
+        created_at,
+        kind,
+        content,
+        sig,
+      }),
+    );
+  }
+
+  /**
+   * Save metadata
+   * Save metadata about a profile, if existing data, delete it
+   */
+
+  saveMetadata(event: EventDto) {
+    // considering it is a metadata event
+    const { name, about, picture } = JSON.parse(event.content);
+    console.log({ name, about, picture });
   }
 
   /**
@@ -34,7 +87,8 @@ export class EventsQueries {
 
     const qb = this.eventsRepo
       .createQueryBuilder('e')
-      .leftJoinAndSelect('e.tags', 't');
+      .leftJoinAndSelect('e.tags', 't')
+      .leftJoinAndSelect('e.pubkey', 'p');
 
     // For each filter in sub create a OR (...) clause
     // while filter values are AND
@@ -47,17 +101,16 @@ export class EventsQueries {
         new Brackets((q) => {
           if (ids) q.andWhere('e.id IN (:...ids)', { ids });
           if (kinds) q.andWhere('e.kind IN (:...kinds)', { kinds });
-          if (e) q.andWhere('t.tag IN (:...e)', { e });
-          if (p) q.andWhere('t.tag IN (:...p)', { p });
+          if (e) q.andWhere('t.value IN (:...e)', { e });
+          if (p) q.andWhere('t.value IN (:...p)', { p });
           if (since) q.andWhere('e.created_at > :since', { since });
           if (until) q.andWhere('e.created_at < :until', { until });
-          if (authors) q.andWhere('e.pubkey IN (:...authors)', { authors });
+          if (authors) q.andWhere('p.value IN (:...authors)', { authors });
         }),
       );
     });
 
     // Only take limit from the first filter, ignore the others
-    qb.limit(filters[0]['limit'] || defaultLimit);
-    return qb.leftJoinAndSelect('e.tags', 'tags').getMany();
+    return qb.limit(filters[0]['limit'] || defaultLimit).getMany();
   }
 }

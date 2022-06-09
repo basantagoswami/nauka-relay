@@ -1,16 +1,23 @@
-import { Column, Entity, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  ManyToMany,
+  PrimaryGeneratedColumn,
+  Unique,
+} from 'typeorm';
 import { Event } from './events.entity';
 
 @Entity({ name: 'tags' })
+@Unique('unique_tag', ['type', 'value', 'recommended_relay_url'])
 export class Tag {
   @PrimaryGeneratedColumn()
-  id: string;
+  id: number;
 
   @Column()
-  name: string;
+  type: string;
 
   @Column()
-  tag: string;
+  value: string;
 
   @Column({ nullable: true })
   recommended_relay_url: string;
