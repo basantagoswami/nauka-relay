@@ -2,6 +2,10 @@
 
 Nauka is an attempt at creating a social network using the [nostr](https://github.com/fiatjaf/nostr) protocol. For now it is just a **nostr relay** that runs on nodejs, but is going to be a client, relay monorepo in the future.
 
+```
+NOTE: You are in the dev branch now. Which means a lot of things that you see here might not make any sense. But I want to develop Nauka in the open, so whatever stupid changes I make, that is gonna be here on this branch
+```
+
 
 ## Installation
 
