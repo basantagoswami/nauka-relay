@@ -1,7 +1,15 @@
-# Nauka
+# Nauka Relay
 
-Nauka is an attempt at creating a social network using the [nostr](https://github.com/fiatjaf/nostr) protocol. For now it is just a **nostr relay** that runs on nodejs, but is going to be a client, relay monorepo in the future.
-
+## IMPORTANT:
+Nauka was an attempt at creating a nostr relay-client monorepo, has now been archived. The code is terrible and you are better off using something like [nostr-rs-relay](https://sr.ht/~gheartsfield/nostr-rs-relay/) (written in Rust), or the [nostr-ts-relay](https://github.com/Cameri/nostr-ts-relay) (written in TypeScript). I made a bunch of wrong decisions while creating it and ended up overengineering it.
+<br>
+<br>
+The name nauka is being used on my [new project](https://github.com/basantagoswami/nauka), a nostr client for blogging.
+<br>
+<br>
+If you want to try running this relay, you can go through the following instructions:
+<br>
+<br>
 
 ## Installation
 
