@@ -1,7 +1,7 @@
 # Nauka Relay
 
 ## IMPORTANT:
-Nauka was an attempt at creating a nostr relay-client monorepo. The code is terrible and you are better off using something like [nostr-rs-relay](https://sr.ht/~gheartsfield/nostr-rs-relay/) (written in Rust), or the [nostr-ts-relay](https://github.com/Cameri/nostr-ts-relay) (written in TypeScript). I made a bunch of wrong decisions while creating it and ended up overengineering it.
+Nauka was an attempt at creating a nostr relay-client monorepo. The code is terrible and you are better off using something like [nostr-rs-relay](https://sr.ht/~gheartsfield/nostr-rs-relay/) (written in Rust), or the [nostr-ts-relay](https://github.com/Cameri/nostr-ts-relay) (written in TypeScript). I made a bunch of wrong decisions while creating it and ended up overengineering it, so the repo has been archived.
 <br>
 <br>
 The name nauka is being used on my [new project](https://github.com/basantagoswami/nauka), a nostr client for blogging.
